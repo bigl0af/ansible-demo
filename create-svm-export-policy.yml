@@ -1,0 +1,38 @@
+- name: deploy SVM export policy
+  hosts: all
+  gather_facts: yes
+  tasks:
+
+    - set_fact:
+        tridentconf: "{{ lookup('file', tridentbe) }}"
+
+    - debug:
+        msg: "{{ tridentconf.managementLIF }}"
+      delegate_to: localhost
+
+    - name: Create export policy
+      na_ontap_export_policy:
+        state: present
+        name: 'default'
+        vserver: "{{ tridentconf.svm }}"
+        hostname: "{{ tridentconf.managementLIF }}"
+        username: "{{ tridentconf.username }}"
+        password: "{{ tridentconf.password }}"
+      delegate_to: localhost
+      run_once: yes
+
+    - name: Create ExportPolicyRule
+      na_ontap_export_policy_rule:
+        state: present
+        policy_name: 'default'
+        client_match: '{{ ansible_default_ipv4.address}}/32'
+        ro_rule: '{{ export_policy_ro_rule | default("any") }}'
+        rw_rule: '{{ export_policy_rw_rule | default("any") }}'
+        protocol: '{{ export_policy_protocol | default("any") }}'
+        super_user_security: '{{ export_policy_su_security | default("any") }}'
+        allow_suid: '{{ export_policy_allow_suid | default("true") }}'
+        vserver: "{{ tridentconf.svm }}"
+        hostname: "{{ tridentconf.managementLIF }}"
+        username: "{{ tridentconf.username }}"
+        password: "{{ tridentconf.password }}"
+      delegate_to: localhost
